@@ -1,0 +1,4 @@
+fastapi>=0.100
+uvicorn[standard]>=0.23
+psutil>=5.9
+rich>=13.0
