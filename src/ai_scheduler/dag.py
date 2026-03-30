@@ -4,7 +4,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Callable
+from typing import Callable, Any
 
 
 class TaskStatus(Enum):
@@ -24,7 +24,7 @@ class TaskNode:
     status: TaskStatus = TaskStatus.PENDING
     dependencies: list[str] = field(default_factory=list)
     dependents: list[str] = field(default_factory=list)
-    result: any = None
+    result: Any = None
     error: str | None = None
     started_at: datetime | None = None
     completed_at: datetime | None = None
@@ -87,7 +87,7 @@ class TaskDAG:
             self.tasks[task_id].status = TaskStatus.RUNNING
             self.tasks[task_id].started_at = datetime.now()
 
-    def mark_completed(self, task_id: str, result: any = None) -> None:
+    def mark_completed(self, task_id: str, result: Any = None) -> None:
         if task_id in self.tasks:
             self.tasks[task_id].status = TaskStatus.COMPLETED
             self.tasks[task_id].completed_at = datetime.now()
@@ -274,7 +274,7 @@ class DAGExecutor:
         
         return {"results": results, "errors": errors, "completed": self.dag.get_dag_info()}
 
-    async def _execute_task_async(self, task: TaskNode) -> any:
+    async def _execute_task_async(self, task: TaskNode) -> Any:
         import asyncio
         
         self.dag.mark_running(task.task_id)
@@ -321,7 +321,7 @@ class DAGExecutor:
         
         return {"results": results, "errors": errors, "completed": self.dag.get_dag_info()}
 
-    def _execute_task(self, task: TaskNode) -> any:
+    def _execute_task(self, task: TaskNode) -> Any:
         self.dag.mark_running(task.task_id)
         
         try:

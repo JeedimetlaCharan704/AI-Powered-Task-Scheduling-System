@@ -48,6 +48,9 @@ mongodb = ["pymongo >= 4.13.0"]
 mqtt = ["paho-mqtt >= 2.0"]
 redis = ["redis >= 5.0.1"]
 sqlalchemy = ["sqlalchemy[asyncio] >= 2.0.24"]
+web = ["fastapi >= 0.100", "uvicorn >= 0.23", "psutil >= 5.9"]
+cli = ["rich >= 13.0"]
+ai-scheduler = ["fastapi >= 0.100", "uvicorn >= 0.23", "psutil >= 5.9", "rich >= 13.0"]
 
 [dependency-groups]
 test = [
