@@ -546,11 +546,14 @@ DASHBOARD_HTML = """
                                     <p class="text-sm text-gray-400">ID: ${task.task_id}</p>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-4">
+                            <div class="flex items-center gap-3">
                                 <span class="text-sm font-bold text-purple-400">${(task.priority || 0).toFixed(1)}</span>
                                 <span class="px-3 py-1 rounded-full text-xs font-medium ${getStatusClass(task.status)}">
                                     ${task.status || 'pending'}
                                 </span>
+                                <button onclick="runSingleTask('${task.task_id}')" class="px-3 py-1 bg-green-500 hover:bg-green-600 rounded-lg text-xs font-bold text-white transition">
+                                    Run
+                                </button>
                             </div>
                         </div>
                     `).join('');
@@ -587,6 +590,18 @@ DASHBOARD_HTML = """
                 const response = await fetch('/api/tasks/execute-next', { method: 'POST' });
                 const result = await response.json();
                 showToast(result.message || 'Task executed!', 'success');
+                updateDashboard();
+            } catch (error) {
+                showToast('Error executing task', 'error');
+            }
+        }
+        
+        // Run Single Task
+        async function runSingleTask(taskId) {
+            try {
+                const response = await fetch('/api/tasks/' + taskId + '/execute', { method: 'POST' });
+                const result = await response.json();
+                showToast('Task ' + taskId + ' executed!', 'success');
                 updateDashboard();
             } catch (error) {
                 showToast('Error executing task', 'error');
@@ -771,6 +786,54 @@ async def execute_next_task():
     
     execution_order = priority_scorer.suggest_execution_order(task_ids)
     task_id = execution_order[0]
+    
+    dashboard.start_task(task_id)
+    storage.update_task_status(task_id, "running")
+    
+    resource_monitor.start_task_tracking(task_id)
+    
+    start_time = time.time()
+    success = True
+    error = None
+    
+    try:
+        await asyncio.sleep(2)
+    except Exception as e:
+        success = False
+        error = str(e)
+    
+    duration = time.time() - start_time
+    resource_monitor.stop_task_tracking(task_id)
+    
+    usage = resource_monitor.get_task_usage(task_id)
+    
+    storage.save_execution(
+        task_id=task_id,
+        started_at=datetime.now(),
+        completed_at=datetime.now(),
+        duration=duration,
+        success=success,
+        cpu_avg=usage["avg_cpu"],
+        memory_avg=usage["avg_memory"],
+        error=error,
+    )
+    
+    dashboard.update_task_metrics(task_id, usage["avg_cpu"], usage["avg_memory"])
+    dashboard.complete_task(task_id, success=success, error=error)
+    storage.update_task_status(task_id, "completed" if success else "failed")
+    
+    priority_scorer.record_execution(task_id, duration, success)
+    dashboard.update_priority(task_id, priority_scorer.get_priority_score(task_id))
+    
+    await broadcast_update()
+    return {"status": "executed", "task_id": task_id, "duration": duration}
+
+
+@app.post("/api/tasks/{task_id}/execute")
+async def execute_single_task(task_id: str):
+    task = storage.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
     
     dashboard.start_task(task_id)
     storage.update_task_status(task_id, "running")
