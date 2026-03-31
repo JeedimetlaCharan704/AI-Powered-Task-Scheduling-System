@@ -280,17 +280,10 @@ DASHBOARD_HTML = """
                 <div class="glass rounded-2xl p-6">
                     <h2 class="text-xl font-bold mb-6">Add New Task</h2>
                     <form id="task-form" class="space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm text-gray-400 mb-2">Task ID</label>
-                                <input type="text" name="task_id" placeholder="unique_task_id" required 
-                                    class="w-full px-4 py-3 rounded-xl">
-                            </div>
-                            <div>
-                                <label class="block text-sm text-gray-400 mb-2">Task Name</label>
-                                <input type="text" name="name" placeholder="Data Processing" required 
-                                    class="w-full px-4 py-3 rounded-xl">
-                            </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Task Name</label>
+                            <input type="text" name="name" placeholder="Data Processing" required 
+                                class="w-full px-4 py-3 rounded-xl">
                         </div>
                         <div class="grid grid-cols-3 gap-4">
                             <div>
@@ -642,7 +635,7 @@ DASHBOARD_HTML = """
             const formData = new FormData(e.target);
             
             const task = {
-                task_id: formData.get('task_id'),
+                task_id: 'task_' + Date.now(),
                 name: formData.get('name'),
                 complexity: parseFloat(formData.get('complexity')),
                 estimated_duration: parseFloat(formData.get('estimated_duration')),
