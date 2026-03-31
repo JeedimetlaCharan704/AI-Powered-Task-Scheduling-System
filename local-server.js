@@ -1,3 +1,7 @@
+const http = require('http');
+const url = require('url');
+const querystring = require('querystring');
+
 const TASKS = [];
 const RESOURCE_DATA = {
   current_cpu: 0,
@@ -253,13 +257,14 @@ const html = `
             });
         }
         
-        function showToast(message, type = 'success') {
+        function showToast(message, type) {
+            type = type || 'success';
             const toast = document.getElementById('toast');
             document.getElementById('toast-message').textContent = message;
             document.getElementById('toast-icon').className = 'w-8 h-8 rounded-full flex items-center justify-center ' + (type === 'success' ? 'bg-green-500' : 'bg-red-500');
             toast.classList.remove('translate-y-20', 'opacity-0');
             toast.classList.add('translate-y-0', 'opacity-100');
-            setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); }, 3000);
+            setTimeout(function() { toast.classList.add('translate-y-20', 'opacity-0'); }, 3000);
         }
         
         function getStatusClass(status) {
@@ -271,9 +276,9 @@ const html = `
                 const res = await fetch('/api/dashboard');
                 const data = await res.json();
                 
-                document.getElementById('stat-total').textContent = data.summary?.total_tasks || 0;
-                document.getElementById('stat-running').textContent = data.summary?.running || 0;
-                document.getElementById('stat-completed').textContent = data.summary?.completed || 0;
+                document.getElementById('stat-total').textContent = data.summary.total_tasks || 0;
+                document.getElementById('stat-running').textContent = data.summary.running || 0;
+                document.getElementById('stat-completed').textContent = data.summary.completed || 0;
                 document.getElementById('stat-success').textContent = (data.success_rate || 100) + '%';
                 
                 const system = data.system || {};
@@ -298,39 +303,39 @@ const html = `
                 if (tasks.length === 0) {
                     document.getElementById('task-list').innerHTML = '<p class="text-gray-500 text-center py-12">No tasks yet. Add some tasks below!</p>';
                 } else {
-                    document.getElementById('task-list').innerHTML = tasks.map(task => \`
-                        <div class="task-card rounded-xl p-4 flex items-center justify-between slide-in">
-                            <div class="flex items-center gap-4">
-                                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h4 class="font-semibold">\${task.name || task.task_id}</h4>
-                                    <p class="text-sm text-gray-400">ID: \${task.task_id}</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-3">
-                                <span class="text-sm font-bold text-purple-400">\${(task.priority || 0).toFixed(1)}</span>
-                                <span class="px-3 py-1 rounded-full text-xs font-medium \${getStatusClass(task.status)}">\${task.status || 'pending'}</span>
-                                <button onclick="runTask('\${task.task_id}')" class="px-3 py-1 bg-green-500 hover:bg-green-600 rounded-lg text-xs font-bold text-white transition">Run</button>
-                            </div>
-                        </div>
-                    \`).join('');
+                    document.getElementById('task-list').innerHTML = tasks.map(function(task) {
+                        return '<div class="task-card rounded-xl p-4 flex items-center justify-between slide-in">' +
+                            '<div class="flex items-center gap-4">' +
+                                '<div class="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">' +
+                                    '<svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+                                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>' +
+                                    '</svg>' +
+                                '</div>' +
+                                '<div>' +
+                                    '<h4 class="font-semibold">' + (task.name || task.task_id) + '</h4>' +
+                                    '<p class="text-sm text-gray-400">ID: ' + task.task_id + '</p>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="flex items-center gap-3">' +
+                                '<span class="text-sm font-bold text-purple-400">' + (task.priority || 0).toFixed(1) + '</span>' +
+                                '<span class="px-3 py-1 rounded-full text-xs font-medium ' + getStatusClass(task.status) + '">' + (task.status || 'pending') + '</span>' +
+                                '<button onclick="runTask(\\'' + task.task_id + '\\')" class="px-3 py-1 bg-green-500 hover:bg-green-600 rounded-lg text-xs font-bold text-white transition">Run</button>' +
+                            '</div>' +
+                        '</div>';
+                    }).join('');
                 }
                 
-                const sorted = [...tasks].sort((a, b) => (b.priority || 0) - (a.priority || 0)).slice(0, 5);
+                const sorted = tasks.slice().sort(function(a, b) { return (b.priority || 0) - (a.priority || 0); }).slice(0, 5);
                 if (sorted.length > 0) {
-                    document.getElementById('priority-list').innerHTML = sorted.map((t, i) => \`
-                        <div class="flex items-center justify-between p-3 rounded-lg bg-white/5">
-                            <div class="flex items-center gap-3">
-                                <span class="w-6 h-6 rounded-full \${i === 0 ? 'bg-gradient-to-br from-yellow-400 to-orange-500' : 'bg-white/10'} flex items-center justify-center text-xs font-bold">\${i+1}</span>
-                                <span class="text-sm">\${t.name || t.task_id}</span>
-                            </div>
-                            <span class="font-bold text-purple-400">\${(t.priority || 0).toFixed(1)}</span>
-                        </div>
-                    \`).join('');
+                    document.getElementById('priority-list').innerHTML = sorted.map(function(t, i) {
+                        return '<div class="flex items-center justify-between p-3 rounded-lg bg-white/5">' +
+                            '<div class="flex items-center gap-3">' +
+                                '<span class="w-6 h-6 rounded-full ' + (i === 0 ? 'bg-gradient-to-br from-yellow-400 to-orange-500' : 'bg-white/10') + ' flex items-center justify-center text-xs font-bold">' + (i+1) + '</span>' +
+                                '<span class="text-sm">' + (t.name || t.task_id) + '</span>' +
+                            '</div>' +
+                            '<span class="font-bold text-purple-400">' + (t.priority || 0).toFixed(1) + '</span>' +
+                        '</div>';
+                    }).join('');
                 } else {
                     document.getElementById('priority-list').innerHTML = '<p class="text-gray-500 text-center py-4">No tasks ranked yet</p>';
                 }
@@ -353,7 +358,7 @@ const html = `
             } catch (e) { showToast('Error', 'error'); }
         }
         
-        document.getElementById('task-form').addEventListener('submit', async (e) => {
+        document.getElementById('task-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const fd = new FormData(e.target);
             const res = await fetch('/api/tasks', {
@@ -376,7 +381,7 @@ const html = `
             }
         });
         
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', function() {
             initChart();
             loadTasks();
             setInterval(loadTasks, 2000);
@@ -386,48 +391,55 @@ const html = `
 </html>
 `;
 
-module.exports = (req, res) => {
-    const url = require('url').parse(req.url, true);
+function handleRequest(req, res) {
+    const pathname = url.parse(req.url).pathname;
     
-    if (url.pathname === "/" || url.pathname === "/index") {
-        res.setHeader('Content-Type', 'text/html');
-        res.send(html);
+    if (pathname === "/" || pathname === "/index") {
+        res.writeHead(200, {'Content-Type': 'text/html'});
+        res.end(html);
         return;
     }
     
-    if (url.pathname === "/api/tasks" && req.method === "GET") {
-        res.json({ tasks: TASKS });
+    if (pathname === "/api/tasks" && req.method === "GET") {
+        res.writeHead(200, {'Content-Type': 'application/json'});
+        res.end(JSON.stringify({ tasks: TASKS }));
         return;
     }
     
-    if (url.pathname === "/api/tasks" && req.method === "POST") {
-        const body = req.body || {};
-        const deadline = body.deadline ? new Date(body.deadline) : null;
-        const now = new Date();
-        const hoursUntilDeadline = deadline ? (deadline - now) / (1000 * 60 * 60) : 24;
-        const deadlineScore = Math.min(100, Math.max(0, hoursUntilDeadline * 10));
-        const complexity = body.complexity || 5;
-        const priority = (deadlineScore * 0.5) + (complexity * 5) + (Math.random() * 10);
-        
-        const task = {
-            task_id: body.task_id || 'task_' + Date.now(),
-            name: body.name,
-            complexity: complexity,
-            estimated_duration: body.estimated_duration || 60,
-            deadline: body.deadline,
-            status: "pending",
-            priority: priority,
-            created_at: new Date().toISOString()
-        };
-        TASKS.push(task);
-        res.json({ status: "success", task_id: task.task_id });
+    if (pathname === "/api/tasks" && req.method === "POST") {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', () => {
+            const taskData = JSON.parse(body || '{}');
+            const deadline = taskData.deadline ? new Date(taskData.deadline) : null;
+            const now = new Date();
+            const hoursUntilDeadline = deadline ? (deadline - now) / (1000 * 60 * 60) : 24;
+            const deadlineScore = Math.min(100, Math.max(0, hoursUntilDeadline * 10));
+            const complexity = taskData.complexity || 5;
+            const priority = (deadlineScore * 0.5) + (complexity * 5) + (Math.random() * 10);
+            
+            const task = {
+                task_id: taskData.task_id || 'task_' + Date.now(),
+                name: taskData.name,
+                complexity: complexity,
+                estimated_duration: taskData.estimated_duration || 60,
+                deadline: taskData.deadline,
+                status: "pending",
+                priority: priority,
+                created_at: new Date().toISOString()
+            };
+            TASKS.push(task);
+            res.writeHead(200, {'Content-Type': 'application/json'});
+            res.end(JSON.stringify({ status: "success", task_id: task.task_id }));
+        });
         return;
     }
     
-    if (url.pathname === "/api/tasks/execute-next" && req.method === "POST") {
+    if (pathname === "/api/tasks/execute-next" && req.method === "POST") {
         const pending = TASKS.filter(t => t.status === "pending");
         if (pending.length === 0) {
-            res.json({ status: "no_tasks", message: "No pending tasks" });
+            res.writeHead(200, {'Content-Type': 'application/json'});
+            res.end(JSON.stringify({ status: "no_tasks", message: "No pending tasks" }));
             return;
         }
         pending.sort((a, b) => (b.priority || 0) - (a.priority || 0));
@@ -438,16 +450,18 @@ module.exports = (req, res) => {
             RESOURCE_DATA.current_cpu = Math.random() * 30 + 10;
             RESOURCE_DATA.current_memory = Math.random() * 20 + 70;
         }, 2000);
-        res.json({ status: "executed", task_id: task.task_id });
+        res.writeHead(200, {'Content-Type': 'application/json'});
+        res.end(JSON.stringify({ status: "executed", task_id: task.task_id }));
         return;
     }
     
-    const runMatch = url.pathname.match(/\/api\/tasks\/([^\/]+)\/execute/);
-    if (runMatch && req.method === "POST") {
-        const taskId = runMatch[1];
+    if (pathname.match(/\/api\/tasks\/([^\/]+)\/execute/) && req.method === "POST") {
+        const match = pathname.match(/\/api\/tasks\/([^\/]+)\/execute/);
+        const taskId = match[1];
         const task = TASKS.find(t => t.task_id === taskId);
         if (!task) {
-            res.status(404).json({ error: "Task not found" });
+            res.writeHead(404, {'Content-Type': 'application/json'});
+            res.end(JSON.stringify({ error: "Task not found" }));
             return;
         }
         task.status = "running";
@@ -456,15 +470,17 @@ module.exports = (req, res) => {
             RESOURCE_DATA.current_cpu = Math.random() * 30 + 10;
             RESOURCE_DATA.current_memory = Math.random() * 20 + 70;
         }, 2000);
-        res.json({ status: "executed", task_id: task.task_id });
+        res.writeHead(200, {'Content-Type': 'application/json'});
+        res.end(JSON.stringify({ status: "executed", task_id: task.task_id }));
         return;
     }
     
-    if (url.pathname === "/api/dashboard") {
+    if (pathname === "/api/dashboard") {
         const completed = TASKS.filter(t => t.status === "completed").length;
         const failed = TASKS.filter(t => t.status === "failed").length;
         const total = TASKS.length;
-        res.json({
+        res.writeHead(200, {'Content-Type': 'application/json'});
+        res.end(JSON.stringify({
             summary: {
                 total_tasks: TASKS.length,
                 running: TASKS.filter(t => t.status === "running").length,
@@ -475,9 +491,15 @@ module.exports = (req, res) => {
             tasks: TASKS,
             system: RESOURCE_DATA,
             success_rate: total > 0 ? Math.round((completed / total) * 100) : 100
-        });
+        }));
         return;
     }
     
-    res.status(404).send("Not Found");
-};
+    res.writeHead(404, {'Content-Type': 'text/plain'});
+    res.end("Not Found");
+}
+
+const PORT = process.env.PORT || 3000;
+http.createServer(handleRequest).listen(PORT, () => {
+    console.log('Server running at http://localhost:' + PORT + '/');
+});
